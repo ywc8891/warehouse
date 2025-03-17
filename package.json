@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "@google-cloud/storage": "^7.15.2",
+    "busboy": "^1.6.0",
+    "cors": "^2.8.5",
+    "firebase-admin": "^13.2.0",
+    "firebase-functions": "^6.3.2",
+    "googleapis": "^146.0.0",
+    "jspdf": "^3.0.0",
+    "jspdf-autotable": "^5.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0"
+  }
+}
