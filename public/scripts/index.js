@@ -115,6 +115,19 @@ export function courierSelectionHandlerSetup(trackingNumber) {
     }
 }
 
+export function courierSelectionHandlerRemove() {
+    const shopeeButton = document.getElementById('selectedShopee');
+    const posButton = document.getElementById('selectedPos');
+
+    if (shopeeButton && shopeeHandler) {
+        shopeeButton.removeEventListener('click', shopeeHandler);
+    }
+
+    if (posButton && posHandler) {
+        posButton.removeEventListener('click', posHandler);
+    }
+}
+
 export function courierSelectionHandler(trackingNumber, selectedCourier) {
     return async function (e) {
         courierSelectionHandlerRemove();
@@ -125,25 +138,24 @@ export function courierSelectionHandler(trackingNumber, selectedCourier) {
     };
 }
 
-export function courierSelectionHandlerRemove() {
-    const shopeeButton = document.getElementById('selectedShopee');
-    const posButton = document.getElementById('selectedPos');
-
-    if (shopeeButton) {
-        shopeeButton.removeEventListener('click', shopeeHandler);
-    }
-
-    if (posButton) {
-        posButton.removeEventListener('click', posHandler);
-    }
-}
-
 export function manualSelectHandlerSetup(trackingNumber) {
     selectCourierManualModal.show();
     couriers.forEach((courier) => {
         const element = document.getElementById(courier.id);
         if (element) {
-            element.addEventListener('click', manualSelectHandler(trackingNumber, courier.name));
+            const handler = manualSelectHandler(trackingNumber, courier.name);
+            element.handler = handler; // Store the handler on the element
+            element.addEventListener('click', handler);
+        }
+    });
+}
+
+export function manualSelectHandlerRemove() {
+    couriers.forEach((courier) => {
+        const element = document.getElementById(courier.id);
+        if (element && element.handler) {
+            element.removeEventListener('click', element.handler);
+            delete element.handler; // Clean up the stored handler
         }
     });
 }
@@ -161,14 +173,6 @@ export function manualSelectHandler(trackingNumber, manualCourier) {
     };
 }
 
-export function manualSelectHandlerRemove() {
-    couriers.forEach((courier) => {
-        const element = document.getElementById(courier.id);
-        if (element) {
-            element.removeEventListener('click', manualSelectHandler);
-        }
-    });
-}
 
 async function logInput(trackingNumber, courier) {
     console.log('Logging input:', { trackingNumber, courier });

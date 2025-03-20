@@ -8,6 +8,7 @@ import path from 'path';
 import os from 'os';
 import Busboy from 'busboy';
 import cors from 'cors';
+import 'dotenv/config'
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -34,6 +35,15 @@ const ALLOWED_EMAILS = ['setiayap@gmail.com', 'ywc8891@gmail.com'];
 // Authentication middleware
 const authenticateUser = async (req, res, next) => {
     console.log('Starting authentication...'); // Debug log
+
+    // Bypass authentication if BYPASS_AUTH is true
+    if (process.env.BYPASS_AUTH === 'true') {
+        console.log('Bypassing authentication for local testing'); // Debug log
+        req.user = { email: 'test@example.com', uid: 'QeORe968zAuyQl4g1SnEXekJSels' }; // Mock user
+        return next();
+    }
+
+    // Proceed with authentication
     const authHeader = req.headers.authorization || '';
     if (!authHeader.startsWith('Bearer ')) {
         console.error('Missing or invalid auth token'); // Debug log
