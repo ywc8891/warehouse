@@ -33,8 +33,10 @@ const ALLOWED_EMAILS = ['setiayap@gmail.com', 'ywc8891@gmail.com'];
 
 // Authentication middleware
 const authenticateUser = async (req, res, next) => {
+    console.log('Starting authentication...'); // Debug log
     const authHeader = req.headers.authorization || '';
     if (!authHeader.startsWith('Bearer ')) {
+        console.error('Missing or invalid auth token'); // Debug log
         return res.status(401).json({
             status: 'error',
             message: 'Unauthorized: Missing or invalid auth token',
@@ -43,10 +45,13 @@ const authenticateUser = async (req, res, next) => {
 
     try {
         const idToken = authHeader.split('Bearer ')[1];
+        console.log('Verifying ID token...'); // Debug log
         const decodedToken = await admin.auth().verifyIdToken(idToken);
+        console.log('Token verified:', decodedToken); // Debug log
         req.user = decodedToken;
         return next();
     } catch (error) {
+        console.error('Token verification failed:', error); // Debug log
         return res.status(401).json({
             status: 'error',
             message: 'Unauthorized: Invalid authentication token',
@@ -55,18 +60,31 @@ const authenticateUser = async (req, res, next) => {
 };
 
 const authenticatedFunction = (handler) => {
-    return functions.https.onRequest((req, res) => {
-        // Use CORS middleware
-        return corsMiddleware(req, res, () => {
-            // Handle OPTIONS preflight request
-            if (req.method === 'OPTIONS') {
-                res.set('Access-Control-Allow-Methods', 'GET, POST');
-                res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-                return res.status(204).send(''); // Respond with 204 No Content
-            }
+    return functions.https.onRequest(async (req, res) => {
+        console.log('Request method:', req.method); // Debug log
+        // Handle OPTIONS preflight request
+        if (req.method === 'OPTIONS') {
+            console.log('Handling OPTIONS request...'); // Debug log
+            // Set CORS headers
+            res.set('Access-Control-Allow-Origin', '*');
+            res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+            res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            return res.status(204).send(''); // Respond with 204 No Content
+        }
 
-            // Authenticate for other requests (e.g., POST)
-            return authenticateUser(req, res, () => handler(req, res));
+        // Authenticate for POST requests
+        console.log('Handling POST request...'); // Debug log
+        return corsMiddleware(req, res, async () => {
+            try {
+                console.log('Authenticating user...'); // Debug log
+                await authenticateUser(req, res, () => handler(req, res));
+            } catch (error) {
+                console.error('Authentication error:', error); // Debug log
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Unauthorized: Invalid authentication token',
+                });
+            }
         });
     });
 };

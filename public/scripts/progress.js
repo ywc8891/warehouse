@@ -20,6 +20,8 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+
+
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -37,17 +39,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
+async function getIdToken() {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('User not signed in');
+    }
+    return await user.getIdToken(true); // Force refresh if needed
+}
+
 // Fetch and display courier data
 async function fetchAndDisplayData() {
     try {
-        const response = await fetch(`${API_URL}/getCourierData`);
+        const idToken = await getIdToken(); // Fetch the ID token
+        const response = await fetch(`${API_URL}/getCourierData`, {
+            headers: {
+                'Authorization': `Bearer ${idToken}`, // Include the ID token
+            },
+        });
         const result = await response.json();
 
         if (result.status === 'success') {
             const tableBody = document.getElementById('courierData');
             tableBody.innerHTML = ''; // Clear existing rows
 
-            // Group tracking numbers by courierr
+            // Group tracking numbers by courier
             const groupedData = result.data.reduce((acc, item) => {
                 if (!acc[item.courier]) {
                     acc[item.courier] = {
@@ -92,11 +107,9 @@ async function fetchAndDisplayData() {
                 const printButton = document.createElement('button');
                 printButton.className = 'btn btn-success';
                 printButton.textContent = 'Print';
-                // printButton.id = 'print-' + courier;
                 printButton.addEventListener('click', () => handlePrint(courier, data.trackingNumbers, data.count));
                 printCell.appendChild(printButton);
                 row.appendChild(printCell);
-
 
                 // Add the row to the table
                 tableBody.appendChild(row);
@@ -215,6 +228,8 @@ function generatePDF(courier, binNumber, trackingNumbers, count) {
 // Upload PDF to Google Drive via Firebase Cloud Function
 async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
     try {
+        const idToken = await getIdToken(); // Fetch the ID token
+
         // Extract the courier code from the binNumber (first 2 characters)
         const courierCode = binNumber.substring(0, 2);
 
@@ -240,6 +255,9 @@ async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
         // Upload the PDF
         const response = await fetch(`${API_URL}/uploadToGoogleDrive`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${idToken}`, // Include the ID token
+            },
             body: formData,
         });
 
@@ -259,11 +277,13 @@ async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
 // Call the deleteCollection Cloud Function
 async function deleteCollection(courier) {
     try {
-        const path = `${COLLECTION_NAME}/${courier.toLowerCase().replace(' ', '_')}/subcollection`
+        const idToken = await getIdToken(); // Fetch the ID token
+        const path = `${COLLECTION_NAME}/${courier.toLowerCase().replace(' ', '_')}/subcollection`;
         const response = await fetch(`${API_URL}/deleteCollection`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`, // Include the ID token
             },
             body: JSON.stringify({ path }),
         });

@@ -1,11 +1,6 @@
-// public/scripts/index.js
-
 // Import shared modules
 import { auth } from './firebase-init.js';
 import { handleGoogleSignIn, handleSignOut } from './auth.js';
-// import { updateUIForSignedInUser, updateUIForSignedOutUser } from './ui.js';
-
-// Import page-specific modules
 import { clearInput, playSound } from './utils.js';
 import { couriers, regex, API_URL } from './constants.js';
 
@@ -14,7 +9,7 @@ import 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.mi
 
 let shopeeHandler, posHandler;
 
-// Initialize Bootstrap modals (if used on this page)
+// Initialize Bootstrap modals
 let selectCourierModal;
 let selectCourierManualModal;
 
@@ -22,11 +17,10 @@ let selectCourierManualModal;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM fully loaded'); // Debug log
 
-    // Check if the modal elements exist
+    // Initialize modals
     const ambiguousCourierModalElement = document.querySelector("#selectAmbiguousCourier");
     const courierModalElement = document.querySelector("#selectCourier");
 
-    // Initialize modals only if the elements exist
     if (ambiguousCourierModalElement) {
         selectCourierModal = new bootstrap.Modal(ambiguousCourierModalElement);
         console.log('selectCourierModal initialized'); // Debug log
@@ -52,10 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up event listeners for form submission
     const form = document.getElementById('inputForm');
     if (form) {
-        form.addEventListener('submit', submit); // Form submission handler
+        form.addEventListener('submit', submit);
     }
 });
-
 
 export async function submit(e) {
     e.preventDefault();
@@ -66,23 +59,20 @@ export async function submit(e) {
     const user = auth.currentUser;
     if (!user) {
         console.error('User not signed in');
-        // You might want to show a sign-in prompt here
         alert('Please sign in to use this feature');
         return;
     }
 
     try {
-        // Get the ID token for the authenticated user
         const idToken = await user.getIdToken(true);
-        console.log(idToken)
+        console.log(idToken);
 
         if (regex.test(trackingNumber)) {
             selectCourierModal.show();
             courierSelectionHandlerSetup(trackingNumber);
         } else {
             console.log(JSON.stringify({ trackingNumber }));
-            
-            // Call Firebase Cloud Function with authentication
+
             const response = await fetch(`${API_URL}/categorise`, {
                 method: 'POST',
                 headers: { 
@@ -97,8 +87,7 @@ export async function submit(e) {
             if (result.status === 'success') {
                 logInput(trackingNumber, result.courier);
                 playSound();
-            }
-            else {
+            } else {
                 throw new Error(result.message);
             }
         }
@@ -113,15 +102,23 @@ export async function submit(e) {
 export function courierSelectionHandlerSetup(trackingNumber) {
     shopeeHandler = courierSelectionHandler(trackingNumber, 'Shopee Express');
     posHandler = courierSelectionHandler(trackingNumber, 'POS Malaysia');
-    document.getElementById('selectedShopee').addEventListener('click', shopeeHandler);
-    document.getElementById('selectedPos').addEventListener('click', posHandler);
+
+    const shopeeButton = document.getElementById('selectedShopee');
+    const posButton = document.getElementById('selectedPos');
+
+    if (shopeeButton) {
+        shopeeButton.addEventListener('click', shopeeHandler);
+    }
+
+    if (posButton) {
+        posButton.addEventListener('click', posHandler);
+    }
 }
 
-export async function courierSelectionHandler(trackingNumber, selectedCourier) {
-    return async function curried_func(e) {
+export function courierSelectionHandler(trackingNumber, selectedCourier) {
+    return async function (e) {
         courierSelectionHandlerRemove();
         selectCourierModal.hide();
-        // Call Firebase Cloud Function instead of google.script.run
         await logInput(trackingNumber, selectedCourier);
         playSound();
         clearInput();
@@ -129,28 +126,37 @@ export async function courierSelectionHandler(trackingNumber, selectedCourier) {
 }
 
 export function courierSelectionHandlerRemove() {
-    document.getElementById('selectedShopee').removeEventListener('click', shopeeHandler);
-    document.getElementById('selectedPos').removeEventListener('click', posHandler);
+    const shopeeButton = document.getElementById('selectedShopee');
+    const posButton = document.getElementById('selectedPos');
+
+    if (shopeeButton) {
+        shopeeButton.removeEventListener('click', shopeeHandler);
+    }
+
+    if (posButton) {
+        posButton.removeEventListener('click', posHandler);
+    }
 }
 
 export function manualSelectHandlerSetup(trackingNumber) {
     selectCourierManualModal.show();
     couriers.forEach((courier) => {
         const element = document.getElementById(courier.id);
-        element.addEventListener('click', manualSelectHandler(trackingNumber, courier.name));
+        if (element) {
+            element.addEventListener('click', manualSelectHandler(trackingNumber, courier.name));
+        }
     });
 }
 
 export function manualSelectHandler(trackingNumber, manualCourier) {
-    return async function curried_func(e) {
+    return async function (e) {
         manualSelectHandlerRemove();
         selectCourierManualModal.hide();
-        if (manualCourier == 'Skip') {
+        if (manualCourier === 'Skip') {
             return;
         }
-        // Call Firebase Cloud Function instead of google.script.run
-        playSound();
         await logInput(trackingNumber, manualCourier);
+        playSound();
         clearInput();
     };
 }
@@ -158,46 +164,43 @@ export function manualSelectHandler(trackingNumber, manualCourier) {
 export function manualSelectHandlerRemove() {
     couriers.forEach((courier) => {
         const element = document.getElementById(courier.id);
-        element.removeEventListener('click', () => manualSelectHandler(trackingNumber, courier.name));
+        if (element) {
+            element.removeEventListener('click', manualSelectHandler);
+        }
     });
 }
 
-// Helper function to call Firebase Cloud Function
 async function logInput(trackingNumber, courier) {
-    console.log('Logging input:', { trackingNumber, courier }); // Debug log
+    console.log('Logging input:', { trackingNumber, courier });
 
     try {
-        // Get the current user's ID token
         const user = auth.currentUser;
         if (!user) {
             throw new Error('User not signed in');
         }
 
-        const idToken = await user.getIdToken(true); // Force refresh
-        console.log('ID Token:', idToken); // Debug log
+        const idToken = await user.getIdToken(true);
+        console.log('ID Token:', idToken);
 
-        // Send the request with the ID token in the Authorization header
         const response = await fetch(`${API_URL}/logInput`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`, // Include the ID token
+                'Authorization': `Bearer ${idToken}`,
             },
             body: JSON.stringify({ trackingNumber, courier }),
         });
 
-        // Log the raw response text
         const rawResponse = await response.text();
-        console.log('Raw response:', rawResponse); // Debug log
+        console.log('Raw response:', rawResponse);
 
-        // Parse the response as JSON
         const result = JSON.parse(rawResponse);
-        console.log('Parsed result:', result); // Debug log
+        console.log('Parsed result:', result);
 
         if (result.status !== 'success') {
             throw new Error(result.message);
         }
     } catch (error) {
-        console.error('Error logging input:', error); // Debug log
+        console.error('Error logging input:', error);
     }
 }
