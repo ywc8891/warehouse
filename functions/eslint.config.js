@@ -7,6 +7,9 @@ export default [
     files: ["**/*.js"],
     languageOptions: {
       sourceType: "module", // Use "module" for ES modules
+      globals: {
+        ...globals.node
+      }
     },
   },
   {
