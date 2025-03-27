@@ -39,7 +39,7 @@ const authenticateUser = async (req, res, next) => {
     // Bypass authentication if BYPASS_AUTH is true
     if (process.env.BYPASS_AUTH === 'true') {
         console.log('Bypassing authentication for local testing'); // Debug log
-        req.user = { email: 'test@example.com', uid: 'QeORe968zAuyQl4g1SnEXekJSels' }; // Mock user
+        req.user = { email: 'test@example.com', uid: 'mFCodhlghrk9tpPxGTkGtYy3UQBa' }; // Mock user
         return next();
     }
 
@@ -360,10 +360,52 @@ export const getCourierData = authenticatedFunction(async (req, res) => {
     }
 });
 
+// Delete a specific tracking number - Now with authentication
+export const deleteTrackingNumber = authenticatedFunction(async (req, res) => {
+    const { trackingNumber, courier } = req.body;
+
+    console.log(`User ${req.user.email} attempting to delete tracking number:`, trackingNumber);
+
+    try {
+        // Validate input
+        if (!trackingNumber || !courier) {
+            throw new Error('Missing trackingNumber or courier');
+        }
+
+        // Get reference to the document
+        const docRef = admin.firestore()
+            .collection(COLLECTION_NAME)
+            .doc(courier.toLowerCase().replace(' ', '_'))
+            .collection('subcollection')
+            .doc(trackingNumber);
+
+        // Check if document exists
+        const docSnapshot = await docRef.get();
+        if (!docSnapshot.exists) {
+            throw new Error('Tracking number not found');
+        }
+
+        // Delete the document
+        await docRef.delete();
+
+        // Return success response
+        res.json({
+            status: 'success',
+            message: 'Tracking number deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting tracking number:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+});
+
 // Upload to Google Drive - Now with authentication
 export const uploadToGoogleDrive = authenticatedFunction((req, res) => {
     console.log(`User ${req.user.email} attempting to upload to Google Drive`);
-    
+
     const busboy = Busboy({ headers: req.headers });
     let fileBuffer = Buffer.from('');
     let folderId = '';

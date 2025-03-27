@@ -91,7 +91,27 @@ async function fetchAndDisplayData() {
                 data.trackingNumbers.forEach((trackingNumber) => {
                     const trackingNumberDiv = document.createElement('div');
                     trackingNumberDiv.className = 'tracking-number';
+
+                    // Add class if tracking number is long
+                    if (trackingNumber.length >= 20) {
+                        trackingNumberDiv.classList.add('long-tracking-number');
+                    }
+
                     trackingNumberDiv.textContent = trackingNumber;
+
+                    // Add delete button for long tracking numbers
+                    if (trackingNumber.length >= 20) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.innerHTML = '&times;';
+                        deleteBtn.className = 'delete-tracking-btn';
+                        deleteBtn.title = 'Delete this tracking number';
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            handleDeleteTrackingNumber(trackingNumber, courier);
+                        });
+                        trackingNumberDiv.appendChild(deleteBtn);
+                    }
+
                     trackingNumbersDiv.appendChild(trackingNumberDiv);
                 });
                 trackingNumbersCell.appendChild(trackingNumbersDiv);
@@ -320,6 +340,38 @@ function getSequentialLetter(courierCode) {
     return nextLetter;
 }
 
+async function handleDeleteTrackingNumber(trackingNumber, courier) {
+    if (!confirm(`Are you sure you want to delete tracking number: ${trackingNumber}?`)) {
+        return;
+    }
+
+    try {
+        const idToken = await getIdToken();
+        const response = await fetch(`${API_URL}/deleteTrackingNumber`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+                trackingNumber,
+                courier
+            }),
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert('Tracking number deleted successfully');
+            fetchAndDisplayData(); // Refresh the data
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting tracking number:', error);
+        alert('Error deleting tracking number: ' + error.message);
+    }
+}
 
 
 // Load data when the page loads
