@@ -18,8 +18,9 @@ export const couriers = [
 
 export const COLLECTION_NAME = 'EFLMY05';
 
-export const GOOGLE_DRIVE_FOLDER_ID = '1610V-Uo6_aoNs2P0C0DI3XVLETzm4xi7';
+// export const GOOGLE_DRIVE_FOLDER_ID = '1610V-Uo6_aoNs2P0C0DI3XVLETzm4xi7';
+export const GOOGLE_DRIVE_FOLDER_ID = '1nkEj7GD384haC_ldYE5tIpOaeFzinRm-';
 
-export const API_URL = 'https://us-central1-warehouse-513c0.cloudfunctions.net';
-// export const API_URL = 'http://localhost:5001/warehouse-513c0/us-central1';
+// export const API_URL = 'https://us-central1-warehouse-513c0.cloudfunctions.net';
+export const API_URL = 'http://localhost:5001/warehouse-513c0/us-central1';
 

@@ -37,9 +37,10 @@ const authenticateUser = async (req, res, next) => {
     console.log('Starting authentication...'); // Debug log
 
     // Bypass authentication if BYPASS_AUTH is true
+    console.log(process.env.BYPASS_AUTH)
     if (process.env.BYPASS_AUTH === 'true') {
         console.log('Bypassing authentication for local testing'); // Debug log
-        req.user = { email: 'test@example.com', uid: 'mFCodhlghrk9tpPxGTkGtYy3UQBa' }; // Mock user
+        req.user = { email: 'test@example.com', uid: 'tpFBUt8p6rL46QCAABavAthbm95R' }; // Mock user
         return next();
     }
 
@@ -409,9 +410,12 @@ export const uploadToGoogleDrive = authenticatedFunction((req, res) => {
     const busboy = Busboy({ headers: req.headers });
     let fileBuffer = Buffer.from('');
     let folderId = '';
-    let fileName = ''; // Declare fileName here
+    let fileName = '';
+    let fileType = 'pdf'; // Default to pdf
+    let originalFileName = '';
 
     busboy.on('file', (fieldname, file, filename) => {
+        originalFileName = filename;
         console.log(`File [${fieldname}] received: ${filename}`);
 
         file.on('data', (data) => {
@@ -424,12 +428,19 @@ export const uploadToGoogleDrive = authenticatedFunction((req, res) => {
     });
 
     busboy.on('field', (fieldname, value) => {
-        if (fieldname === 'folderId') {
-            folderId = value;
-            console.log(`Folder ID: ${folderId}`);
-        } else if (fieldname === 'fileName') {
-            fileName = value; // Assign value to fileName
-            console.log(`File Name: ${fileName}`);
+        switch (fieldname) {
+            case 'folderId':
+                folderId = value;
+                console.log(`Folder ID: ${folderId}`);
+                break;
+            case 'fileName':
+                fileName = value;
+                console.log(`File Name: ${fileName}`);
+                break;
+            case 'fileType':
+                fileType = value.toLowerCase();
+                console.log(`File Type: ${fileType}`);
+                break;
         }
     });
 
@@ -442,19 +453,30 @@ export const uploadToGoogleDrive = authenticatedFunction((req, res) => {
                 });
             }
 
+            // Determine file extension and MIME type
+            const extension = fileType === 'csv' ? '.csv' : '.pdf';
+            const mimeType = fileType === 'csv' 
+                ? 'text/csv' 
+                : 'application/pdf';
+
+            // If fileName doesn't have extension, add it
+            const finalFileName = fileName.endsWith(extension) 
+                ? fileName 
+                : `${fileName}${extension}`;
+
             // Save file to a temporary location
-            const tempFilePath = path.join(os.tmpdir(), `${fileName}.pdf`);
+            const tempFilePath = path.join(os.tmpdir(), finalFileName);
             fs.writeFileSync(tempFilePath, fileBuffer);
 
             // Upload file to Google Drive
             const drive = google.drive({ version: 'v3', auth });
             const driveResponse = await drive.files.create({
                 requestBody: {
-                    name: `${fileName}.pdf`, // Use fileName as the file name
+                    name: finalFileName,
                     parents: [folderId],
                 },
                 media: {
-                    mimeType: 'application/pdf',
+                    mimeType,
                     body: fs.createReadStream(tempFilePath),
                 },
             });
@@ -467,6 +489,7 @@ export const uploadToGoogleDrive = authenticatedFunction((req, res) => {
                 status: 'success',
                 message: 'File uploaded to Google Drive',
                 fileId: driveResponse.data.id,
+                fileType,
             });
         } catch (error) {
             console.error('Error uploading to Google Drive:', error);

@@ -157,16 +157,24 @@ async function handlePrint(courier, trackingNumbers, count) {
         const binNumber = generateBinNumber(courier);
         console.log('Bin number:', binNumber);
 
-        // Step 2: Generate PDF
+        
+        // Step 2: Generate PDF and CSV
         const pdfBlob = generatePDF(courier, binNumber, trackingNumbers, count);
+        const csvBlob = generateCSVBlob(courier, binNumber, trackingNumbers, count)
         loadingBar.style.width = '50%';
-        loadingStatus.textContent = 'Uploading PDF to Google Drive...';
-
-
+        loadingStatus.textContent = 'Uploading PDF & CSV to Google Drive...';
+        
+        // Step 2.5: Get sequential number
+        // Extract the courier code from the binNumber (first 2 characters)
+        const courierCode = binNumber.substring(0, 2);
+        // Get the sequential letter for this courier
+        const sequentialLetter = getSequentialLetter(courierCode);
+        
         // Step 3: Upload PDF to Google Drive via Firebase Cloud Function
-        await uploadPDFToGoogleDrive(binNumber, pdfBlob);
+        await uploadFileToGoogleDrive(binNumber,sequentialLetter, pdfBlob, 'pdf');
+        await uploadFileToGoogleDrive(binNumber,sequentialLetter, csvBlob, 'csv')
         loadingBar.style.width = '100%';
-        loadingStatus.textContent = 'PDF uploaded successfully!';
+        loadingStatus.textContent = 'PDF & CSV uploaded successfully!';
 
 
         // Step 4: Delete records for the courier (optional)
@@ -245,8 +253,40 @@ function generatePDF(courier, binNumber, trackingNumbers, count) {
     return pdfBlob;
 }
 
+function generateCSVBlob(courier, binNumber, trackingNumbers, count) {
+    // Create header rows
+    const headerRows = [
+        ['','','Manifest','',''],
+        [],
+        [`Courier: ${courier}`, '','',`Print Date: ${new Date().toLocaleString()}`],
+        [`Bin Number: ${binNumber}`,'','','', `Parcel Count: ${count}`],
+        [],
+        ['','','Parcel Tracking Numbers','',''],
+        []
+    ];
+    
+    // Convert tracking numbers into 5-column rows
+    const dataRows = [];
+    for (let i = 0; i < trackingNumbers.length; i += 5) {
+        const row = trackingNumbers.slice(i, i + 5);
+        dataRows.push(row);
+    }
+    
+    // Combine all rows
+    const allRows = [...headerRows, ...dataRows];
+    
+    // Convert to CSV string
+    let csvContent = '';
+    allRows.forEach(row => {
+        csvContent += row.join(',') + '\r\n';
+    });
+    
+    // Return as Blob
+    return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+}
+
 // Upload PDF to Google Drive via Firebase Cloud Function
-async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
+async function uploadFileToGoogleDrive(binNumber,sequentialLetter, fileBlob, fileType = 'pdf') {
     try {
         const idToken = await getIdToken(); // Fetch the ID token
 
@@ -260,23 +300,25 @@ async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
         const day = String(now.getDate()).padStart(2, '0');
         const dateString = `${year}${month}${day}`;
 
-        // Get the sequential letter for this courier
-        const sequentialLetter = getSequentialLetter(courierCode);
-
-        // Generate the PDF name
+        // Generate the file name
         const fileName = `${courierCode}${dateString}${sequentialLetter}`;
+        const fileExtension = fileType.toLowerCase() === 'csv' ? '.csv' : '.pdf';
+        const mimeType = fileType.toLowerCase() === 'csv' 
+            ? 'text/csv' 
+            : 'application/pdf';
 
         // Prepare the FormData
         const formData = new FormData();
-        formData.append('file', pdfBlob, `${fileName}.pdf`); // Append the file with the correct name
-        formData.append('folderId', GOOGLE_DRIVE_FOLDER_ID); // Append the folder ID
-        formData.append('fileName', fileName); // Append the file name as a field
+        formData.append('file', fileBlob, `${fileName}${fileExtension}`);
+        formData.append('folderId', GOOGLE_DRIVE_FOLDER_ID);
+        formData.append('fileName', fileName);
+        formData.append('fileType', fileType); // Optional: send file type to backend
 
-        // Upload the PDF
+        // Upload the file
         const response = await fetch(`${API_URL}/uploadToGoogleDrive`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${idToken}`, // Include the ID token
+                'Authorization': `Bearer ${idToken}`,
             },
             body: formData,
         });
@@ -286,9 +328,10 @@ async function uploadPDFToGoogleDrive(binNumber, pdfBlob) {
             throw new Error(result.message);
         }
 
-        console.log('PDF uploaded to Google Drive successfully');
+        console.log(`${fileType.toUpperCase()} uploaded to Google Drive successfully`);
+        return result;
     } catch (error) {
-        console.error('Error uploading PDF to Google Drive:', error);
+        console.error(`Error uploading ${fileType.toUpperCase()} to Google Drive:`, error);
         throw error;
     }
 }
