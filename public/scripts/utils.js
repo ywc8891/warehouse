@@ -25,6 +25,7 @@ function generateBinNumber(courier) {
         'J&T Cargo': 'JC',
         'DHL': 'DH',
         'CityLink': 'CL',
+        'GDex Shopee': 'GS'
     };
 
     const code = courierCodes[courier] || 'XX'; // Default code if courier not found

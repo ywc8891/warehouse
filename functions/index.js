@@ -39,7 +39,7 @@ const authenticateUser = async (req, res, next) => {
     // Bypass authentication if BYPASS_AUTH is true
     if (process.env.BYPASS_AUTH === 'true') {
         console.log('Bypassing authentication for local testing'); // Debug log
-        req.user = { email: 'test@example.com', uid: 'mFCodhlghrk9tpPxGTkGtYy3UQBa' }; // Mock user
+        req.user = { email: 'test@example.com', uid: 'jNLx668j8ewm4tWDK64oRbkdNzez' }; // Mock user
         return next();
     }
 
@@ -194,6 +194,7 @@ export const categorise = authenticatedFunction(async (req, res) => {
             ['DHL', new RegExp('^59.*')],
             ['CityLink', new RegExp('^99.*')],
             ['Pos Malaysia', new RegExp('^(ER|PL).*')],
+            ['GDex Shopee', new RegExp('^GDSP.*')],
         ]);
         console.log('Regex map initialized'); // Debug log
 

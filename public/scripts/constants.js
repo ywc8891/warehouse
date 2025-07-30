@@ -13,6 +13,7 @@ export const couriers = [
     { id: 'manualJntCargo', name: 'J&T Cargo' },
     { id: 'manualDhl', name: 'DHL' },
     { id: 'manualCitylink', name: 'CityLink' },
+    { id: 'manualGdexShopee', name: 'GDex Shopee' },
     { id: 'manualSkip', name: 'Skip' },
 ];
 
